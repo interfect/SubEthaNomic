@@ -6,11 +6,11 @@
         <title>SubEthaNomic</title>
         
         <!-- Let's use Bootstrap because we're from the future -->
-        <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
         <!-- We apparently can't have Bootstrap without jQuery -->
         <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
-        <script type="text/javascript" src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
         <script type="text/javascript">
             // We keep a global address
             var address = undefined;
@@ -25,9 +25,15 @@
                 try {
                     print("Initializing...");
                     
+                    if(web3 === undefined) {
+                        print("Error: web3 not found. Make sure this page is being loaded in Mist!");
+                        alert("No web3 object found, Make sure you are running this page in the Mist 0.3.7 browser");
+                        return;
+                    }
+                    
                     if(web3.eth.accounts.length == 0) {
                         // Try again
-                        print("No accounts available. Retrying...");
+                        print("No accounts available. Make sure you have allowed access to your account, and that you have added the dapp to Mist (plus icon on the upper right).");
                         window.setTimeout(initialize, 1000);
                         return;
                     }
@@ -52,6 +58,8 @@
 
                     // Redraw the game state UI to match the contract
                     refresh_game_state();
+                    
+                    print("SubEthaNomic Web UI ready.");
                     
                 } catch (e) {
                     // We have to catch our own errors since the dev tools are no help.
