@@ -13,10 +13,10 @@
         <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
         <script type="text/javascript">
             // We keep a global address
-            var address = undefined;
+            var address;
             
             // And a global contract
-            var contract = undefined;
+            var contract;
         
             var print = function(message) {
                 console.log(message);
@@ -28,7 +28,7 @@
                 try {
                     print("Initializing...");
                     
-                    if(web3 === undefined) {
+                    if(typeof web3 == 'undefined') {
                         print("Error: web3 not found. Make sure this page is being loaded in Mist!");
                         alert("No web3 object found, Make sure you are running this page in the Mist 0.3.7 browser");
                         return;
