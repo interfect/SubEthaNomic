@@ -14,6 +14,9 @@
         <script type="text/javascript">
             // We keep a global address
             var address = undefined;
+            
+            // And a global contract
+            var contract = undefined;
         
             var print = function(message) {
                 console.log(message);
@@ -31,10 +34,13 @@
                         return;
                     }
                     
+                    // Connect to the contract.
+                    contract = web3.eth.contract(CONTRACT_ABI).at(CONTRACT_ADDRESS);
+                    
                     if(web3.eth.accounts.length == 0) {
                         // Try again
                         print("No accounts available. Make sure you have allowed access to your account, and that you have added the dapp to Mist (plus icon on the upper right).");
-                        window.setTimeout(initialize, 1000);
+                        window.setTimeout(initialize, 10000);
                         return;
                     }
                     
@@ -71,7 +77,7 @@
             $(function() {
                 // When jquery says we're ready, wait a bit and then set up
                 print("Ready to initialize...");
-                window.setTimeout(initialize, 1000);
+                initialize();
                 
                 // Bind all the event handlers
                 $("#add-player-button").click(function(event) {
@@ -240,9 +246,6 @@
             
             // What big ugly ABI do we need to call it?
             var CONTRACT_ABI = [{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"proposals","outputs":[{"name":"description","type":"string"},{"name":"ipfsHash","type":"string"},{"name":"isUpgrade","type":"bool"},{"name":"upgradeAddress","type":"address"},{"name":"proposalPassed","type":"bool"},{"name":"proposalFailed","type":"bool"},{"name":"numberOfVotes","type":"uint32"}],"type":"function"},{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"type":"function"},{"constant":false,"inputs":[{"name":"proposalNumber","type":"uint256"}],"name":"executeProposal","outputs":[],"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"supply","type":"uint256"}],"type":"function"},{"constant":true,"inputs":[],"name":"founder","outputs":[{"name":"","type":"address"}],"type":"function"},{"constant":false,"inputs":[{"name":"_address","type":"address"}],"name":"removePlayer","outputs":[],"type":"function"},{"constant":true,"inputs":[{"name":"_address","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"},{"constant":true,"inputs":[],"name":"isSetup","outputs":[{"name":"","type":"bool"}],"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"_success","type":"bool"}],"type":"function"},{"constant":false,"inputs":[{"name":"_address","type":"address"}],"name":"addPlayer","outputs":[],"type":"function"},{"constant":true,"inputs":[{"name":"","type":"address"}],"name":"isPlaying","outputs":[{"name":"","type":"bool"}],"type":"function"},{"constant":false,"inputs":[{"name":"_description","type":"string"},{"name":"_ipfsHash","type":"string"},{"name":"_isUpgrade","type":"bool"},{"name":"_upgradeAddress","type":"address"}],"name":"newProposal","outputs":[{"name":"proposalID","type":"uint256"}],"type":"function"},{"constant":false,"inputs":[{"name":"proposalNumber","type":"uint256"},{"name":"supportsProposal","type":"bool"}],"name":"vote","outputs":[],"type":"function"},{"constant":false,"inputs":[],"name":"startGame","outputs":[],"type":"function"},{"constant":true,"inputs":[],"name":"totalPlayers","outputs":[{"name":"","type":"uint32"}],"type":"function"},{"inputs":[{"name":"_name","type":"string"},{"name":"_symbol","type":"string"}],"type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"proposalID","type":"uint256"},{"indexed":false,"name":"description","type":"string"},{"indexed":false,"name":"ipfsHash","type":"string"},{"indexed":false,"name":"isUpgrade","type":"bool"},{"indexed":false,"name":"upgradeAddress","type":"address"}],"name":"ProposalAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"proposalID","type":"uint256"},{"indexed":false,"name":"voter","type":"address"},{"indexed":false,"name":"position","type":"bool"}],"name":"Voted","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"proposalID","type":"uint256"},{"indexed":false,"name":"passed","type":"bool"}],"name":"ProposalClosed","type":"event"}];
-            
-            // Set up a global for the contract.
-            var contract = web3.eth.contract(CONTRACT_ABI).at(CONTRACT_ADDRESS);
             
             // What's the zero address?
             var ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
