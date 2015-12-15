@@ -1,4 +1,316 @@
 <!DOCTYPE html>
 <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>SubEthaNomic</title>
+        
+        <!-- Let's use Bootstrap because we're from the future -->
+        <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+        <!-- We apparently can't have Bootstrap without jQuery -->
+        <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+        <script type="text/javascript" src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+        <script type="text/javascript">
+            // We keep a global address
+            var address = undefined;
+        
+            var print = function(message) {
+                console.log(message);
+                $("#console").prepend("<p>" + message + "</p>");
+            }
+        
+            var initialize = function() {
+                // This gets called a bit after we load, to give the accounts time to populate
+                try {
+                    print("Initializing...");
+                    
+                    if(web3.eth.accounts.length == 0) {
+                        // Try again
+                        print("No accounts available. Retrying...");
+                        window.setTimeout(initialize, 1000);
+                        return;
+                    }
+                    
+                    address = web3.eth.accounts[0];
+                    print("Got account: " + address);
+                    
+                    // Make it default
+                    web3.eth.defaultAccount = address;
 
+                    $("#account").text(address);
+                    
+                    web3.eth.filter("latest").watch(function(error, result){
+                        if (!error) {
+                            // Put in the current blockhash
+                            $("#blockhash").text(result);
+                            
+                            // Update the game UI
+                            refresh_game_state();
+                        }
+                    });
+
+                    // Redraw the game state UI to match the contract
+                    refresh_game_state();
+                    
+                } catch (e) {
+                    // We have to catch our own errors since the dev tools are no help.
+                    print(e.stack);
+                }
+                
+            };
+            
+            $(function() {
+                // When jquery says we're ready, wait a bit and then set up
+                print("Ready to initialize...");
+                window.setTimeout(initialize, 1000);
+                
+                // Bind all the event handlers
+                $("#add-player-button").click(function(event) {
+                    // When they hit the add player button, try and add a player.
+                    var playerAddress = $("#add-player-address").val();
+                    
+                    if(!web3.isAddress(playerAddress)) {
+                        // Only real addresses are allowed
+                        $("#add-player-status").text("Invalid address");
+                        return;
+                    }
+                    
+                    var gasNeeded = contract.addPlayer.estimateGas(playerAddress, {value: 0});
+                    
+                    if(gasNeeded > 100000) {
+                        // If the contract will fail the operation, that shows up as costing stupid amounts of gas.
+                        // Don't let a dumb user hit OK in that scenario and lose all their ether.
+                        print("Operation would need " + gasNeeded + " gas, which is far too much.");
+                        $("#add-player-status").text("Operation blocked by contract");
+                        return;
+                    }
+                    print("Operation would need " + gasNeeded + " gas, which is acceptable.");
+                    
+                    contract.addPlayer(playerAddress, {value: 0}, function(error, result) {
+                        // Add a player and get a callback.
+                        if(error) {
+                            // Failed!
+                            print(error);
+                            $("#add-player-status").text(error);
+                        } else {
+                            // Success!
+                            print(result);
+                            $("#add-player-status").text("Done!");
+                        }
+                    });
+                        
+                    
+                });
+                
+                
+                $("#remove-player-button").click(function(event) {
+                    // When they hit the remove player button, try and remove a player.
+                    var playerAddress = $("#remove-player-address").val();
+                    
+                    if(!web3.isAddress(playerAddress)) {
+                        // Only real addresses are allowed
+                        $("#remove-player-status").text("Invalid address");
+                        return;
+                    }
+                    
+                    var gasNeeded = contract.removePlayer.estimateGas(playerAddress, {value: 0});
+                    
+                    if(gasNeeded > 100000) {
+                        // If the contract will fail the operation, that shows up as costing stupid amounts of gas.
+                        // Don't let a dumb user hit OK in that scenario and lose all their ether.
+                        print("Operation would need " + gasNeeded + " gas, which is far too much.");
+                        $("#remove-player-status").text("Operation blocked by contract");
+                        return;
+                    }
+                    print("Operation would need " + gasNeeded + " gas, which is acceptable.");
+                        
+                    // Try it for real
+                    contract.removePlayer(playerAddress, {value: 0}, function(error, result) {
+                        // Remove a player and get a callback.
+                        if(error) {
+                            // Failed!
+                            print(error);
+                            $("#remove-player-status").text(error);
+                        } else {
+                            // Success!
+                            print(result);
+                            $("#remove-player-status").text("Done!");
+                        }
+                    });
+
+                    
+                    
+                    
+                });
+                
+                $('#add-proposal-is-upgrade').change(function() {
+                    // When this isn't ticked, the upgrade address fierld should be disabled.
+                    $("#add-proposal-upgrade-address").prop('disabled', !$(this).is(":checked"));
+                });
+                
+                $("#add-proposal-button").click(function(event) {
+                    // When they hit the add proposal button, try and add a proposal.
+                    
+                    var proposalDescription = $("#add-proposal-description").val();
+                    var proposalIpfs = $("#add-proposal-ipfs").val();
+                    var proposalIsUpgrade = $("#add-proposal-is-upgrade").is(":checked");
+                    var proposalUpgradeAddress = $("#add-proposal-upgrade-address").val();
+                    
+                    if(!proposalIsUpgrade) {
+                        // Fill in a dummy upgrade address, so it's valid but empty if we aren't upgrading.
+                        proposalUpgradeAddress = ZERO_ADDRESS
+                    }
+                    
+                    if(!web3.isAddress(proposalUpgradeAddress)) {
+                        // Only real addresses are allowed
+                        $("#add-proposal-status").text("Invalid upgrade address");
+                        return;
+                    }
+                    
+                    if(proposalIpfs != "" && !proposalIpfs.match(/Qm[A-HJ-NP-Za-km-z1-9]{44,45}/)) {
+                        // Complain about bad IPFS hashes for safety.
+                        $("#add-proposal-status").text("Invalid IPFS hash");
+                        return;
+                    }
+                    
+                    if(proposalDescription == "" && proposalIpfs == "" && !proposalIsUpgrade) {
+                        $("#add-proposal-status").text("No proposal content");
+                        return;
+                    }
+                    
+                    var gasNeeded = contract.newProposal.estimateGas(proposalDescription, proposalIpfs, proposalIsUpgrade, 
+                        proposalUpgradeAddress, {value: 0});
+                    
+                    if(gasNeeded > 100000) {
+                        // If the contract will fail the operation, that shows up as costing stupid amounts of gas.
+                        // Don't let a dumb user hit OK in that scenario and lose all their ether.
+                        print("Operation would need " + gasNeeded + " gas, which is far too much.");
+                        $("#add-proposal-status").text("Operation blocked by contract");
+                        return;
+                    }
+                    print("Operation would need " + gasNeeded + " gas, which is acceptable.");
+                    
+                    contract.newProposal(proposalDescription, proposalIpfs, proposalIsUpgrade, 
+                        proposalUpgradeAddress, {value: 0}, function(error, result) {
+                        
+                        // Add a proposal and get a callback.
+                        if(error) {
+                            // Failed!
+                            print(error);
+                            $("#add-proposal-status").text(error);
+                        } else {
+                            // Success!
+                            print(result);
+                            $("#add-proposal-status").text("Done!");
+                        }
+                    });
+
+                });
+                
+            });
+            
+            var refresh_game_state = function() {
+                // Refresh the game state UI after an event comes in
+                
+                // Say whether we're in the game or not.
+                $("#playing").text(contract.isPlaying(address) ? "Yes" : "No");
+                
+                // Set the game name and symbol
+                $("#game-name").text(contract.name());
+                $("#game-symbol").text(contract.symbol());
+                
+                // Say the mode (setup or playing)
+                $("#game-mode").text(contract.isSetup ? "Setup" : "Running");
+                
+                // Count the players
+                $("#game-playercount").text(contract.totalPlayers());
+            }
+
+            // Where is the contract on Ethereum?
+            var CONTRACT_ADDRESS = "0xcc0ee510bc4b5cd4d31da49f672ab5aa6806f70a";
+            
+            // What big ugly ABI do we need to call it?
+            var CONTRACT_ABI = [{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"proposals","outputs":[{"name":"description","type":"string"},{"name":"ipfsHash","type":"string"},{"name":"isUpgrade","type":"bool"},{"name":"upgradeAddress","type":"address"},{"name":"proposalPassed","type":"bool"},{"name":"proposalFailed","type":"bool"},{"name":"numberOfVotes","type":"uint32"}],"type":"function"},{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"type":"function"},{"constant":false,"inputs":[{"name":"proposalNumber","type":"uint256"}],"name":"executeProposal","outputs":[],"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"supply","type":"uint256"}],"type":"function"},{"constant":true,"inputs":[],"name":"founder","outputs":[{"name":"","type":"address"}],"type":"function"},{"constant":false,"inputs":[{"name":"_address","type":"address"}],"name":"removePlayer","outputs":[],"type":"function"},{"constant":true,"inputs":[{"name":"_address","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"},{"constant":true,"inputs":[],"name":"isSetup","outputs":[{"name":"","type":"bool"}],"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"_success","type":"bool"}],"type":"function"},{"constant":false,"inputs":[{"name":"_address","type":"address"}],"name":"addPlayer","outputs":[],"type":"function"},{"constant":true,"inputs":[{"name":"","type":"address"}],"name":"isPlaying","outputs":[{"name":"","type":"bool"}],"type":"function"},{"constant":false,"inputs":[{"name":"_description","type":"string"},{"name":"_ipfsHash","type":"string"},{"name":"_isUpgrade","type":"bool"},{"name":"_upgradeAddress","type":"address"}],"name":"newProposal","outputs":[{"name":"proposalID","type":"uint256"}],"type":"function"},{"constant":false,"inputs":[{"name":"proposalNumber","type":"uint256"},{"name":"supportsProposal","type":"bool"}],"name":"vote","outputs":[],"type":"function"},{"constant":false,"inputs":[],"name":"startGame","outputs":[],"type":"function"},{"constant":true,"inputs":[],"name":"totalPlayers","outputs":[{"name":"","type":"uint32"}],"type":"function"},{"inputs":[{"name":"_name","type":"string"},{"name":"_symbol","type":"string"}],"type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"proposalID","type":"uint256"},{"indexed":false,"name":"description","type":"string"},{"indexed":false,"name":"ipfsHash","type":"string"},{"indexed":false,"name":"isUpgrade","type":"bool"},{"indexed":false,"name":"upgradeAddress","type":"address"}],"name":"ProposalAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"proposalID","type":"uint256"},{"indexed":false,"name":"voter","type":"address"},{"indexed":false,"name":"position","type":"bool"}],"name":"Voted","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"proposalID","type":"uint256"},{"indexed":false,"name":"passed","type":"bool"}],"name":"ProposalClosed","type":"event"}];
+            
+            // Set up a global for the contract.
+            var contract = web3.eth.contract(CONTRACT_ABI).at(CONTRACT_ADDRESS);
+            
+            // What's the zero address?
+            var ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+            
+            
+        </script>
+    </head>
+    <body>
+        <nav id="myNavbar" class="navbar navbar-default" role="navigation">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbarCollapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#">SubEthaNomic</a>
+                </div>
+                <div class="collapse navbar-collapse" id="navbarCollapse">
+                    <ul class="nav navbar-nav">
+                        <li class="active"><a href="#home">Home</a></li>
+                        <li><a onclick="location.reload()">Reload UI</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        <div class="container">
+            <div class="header">
+                <h1>SubEthaNomic Web UI</h1>
+            </div>
+        </div>
+        <div class="jumbotron">
+            <div class="container">
+                <p>Last Block: <strong id="blockhash">waiting...</strong></p>
+                <p>Account: <strong id="account">none</strong></p>
+                <p>Player status: <strong id="playing">unknown</strong></p>
+            </div>
+        </div>
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-4">
+                    <h2>Game State</h2>
+                    <p>Name: <strong id="game-name"></strong></p>
+                    <p>Symbol: <strong id="game-symbol"></strong></p>
+                    <p>State: <strong id="game-mode"></strong></p>
+                    <p>Players: <strong id="game-playercount"></strong></p>
+                </div>
+                <div class="col-sm-4">
+                    <h2>Add Player</h2>
+                    <input type="text" id="add-player-address" placeholder="Address">
+                    <input type="button" id="add-player-button" value="Add">
+                    <div id="add-player-status">Ready</div>
+                </div>
+                <div class="col-sm-4">
+                    <h2>Remove Player</h2>
+                    <input type="text" id="remove-player-address" placeholder="Address">
+                    <input type="button" id="remove-player-button" value="Remove">
+                    <div id="remove-player-status">Ready</div>
+                </div>
+                <div class="col-sm-4">
+                    <h2>Create Proposal</h2>
+                    <input type="text" id="add-proposal-description" placeholder="Description"><br>
+                    <input type="text" id="add-proposal-ipfs" placeholder="IPFS Hash"><br>
+                    <input type="checkbox" id="add-proposal-is-upgrade">Is Upgrade<br>
+                    <input type="text" id="add-proposal-upgrade-address" placeholder="New Game Address" disabled="true"><br>
+                    <input type="button" id="add-proposal-button" value="Propose">
+                    <div id="add-proposal-status">Ready</div>
+                </div>
+                <div class="col-sm-12">
+                    <h2>Console</h2>
+                    <div id="console">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </body>
 </html>
