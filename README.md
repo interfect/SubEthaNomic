@@ -12,4 +12,24 @@ The ABI for the contract is below:
 
 With both of these (and Mist's 0.3.7 wallet release), you can interact with the contract on Ethereum.
 
+## How to play
+
+1. Download and extract the [Mist Browser](https://github.com/ethereum/mist/releases/tag/0.3.6). Note that you **must** use 0.3.6; the 0.3.7 Mist release includes only a wallet, and not a dapp browser. (You can have both Mists installed, as long as only one is running at a time, and they will share the Ethereum wallet and blockchain data.)
+
+2. Run Mist.
+
+3. Set up an Ethereum account and get some Ether, if you haven't done so already.
+
+4. Go to the "Browse" option on the left in Mist, and then enter `https://interfect.github.io/SubEthaNomic/` in the URL bar.
+
+5. Due to a bug in Mist, the dapp won't work until you add it to Mist. **Make sure to press the "+" button at the far right next to the account picker!**
+
+6. Once the dapp is added, grant it access to one of your accounts. It's perfectly safe; Mist will prompt you for confirmation before taking any actions that could result in spending Ether.
+
+7. Once you do this, the app should boot up. Your address should appear next to "Account", and the game state should populate. Once that happens, you can use the UI on the lower right to take any of the actions you are authorized to take (and that have had UI code implemented).
+
+## Actually Signing Up
+
+If you can get this far, send a Reddit message to /u/Interfect with your chosen address and your current "Player status" as reported by the dapp. Once everyone has gotten this far, the game can start.
+
 
