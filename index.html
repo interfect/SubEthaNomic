@@ -222,7 +222,38 @@
 
                 });
                 
+               
+                $("#start-game-button").click(function(event) {
+
+                    var gasNeeded = contract.startGame.estimateGas({value: 0});
+                    
+                    if(gasNeeded > 100000) {
+                        // If the contract will fail the operation, that shows up as costing stupid amounts of gas.
+                        // Don't let a dumb user hit OK in that scenario and lose all their ether.
+                        print("Operation would need " + gasNeeded + " gas, which is far too much.");
+                        $("#start-game-status").text("Operation blocked by contract");
+                        return;
+                    }
+                    print("Operation would need " + gasNeeded + " gas, which is acceptable.");
+                    
+                    contract.startGame({value: 0}, function(error, result) {
+                        // Add a player and get a callback.
+                        if(error) {
+                            // Failed!
+                            print(error);
+                            $("#start-game-status").text(error);
+                        } else {
+                            // Success!
+                            print(result);
+                            $("#start-game-status").text("Done!");
+                        }
+                    });
+                        
+                    
+                });
+                
             });
+                
             
             var refresh_game_state = function() {
                 // Refresh the game state UI after an event comes in
@@ -314,6 +345,11 @@
                     <input type="text" id="add-proposal-upgrade-address" placeholder="New Game Address" disabled="true"><br>
                     <input type="button" id="add-proposal-button" value="Propose">
                     <div id="add-proposal-status">Ready</div>
+                </div>
+                <div class="col-sm-4">
+                    <h2>Start Game</h2>
+                    <input type="button" id="start-game-button" value="Start">
+                    <div id="start-game-status">Ready</div>
                 </div>
                 <div class="col-sm-12">
                     <h2>Console</h2>
